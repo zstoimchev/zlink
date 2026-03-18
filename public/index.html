@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>zlink – Simple URL Shortener</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 3rem;
+      color: #2d3748;
+      letter-spacing: -1px;
+    }
+
+    header p {
+      color: #718096;
+      margin-top: 0.25rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 2rem;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    .form-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    input[type="url"] {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="url"]:focus { border-color: #4299e1; }
+
+    button {
+      padding: 0.75rem 1.25rem;
+      background: #4299e1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #3182ce; }
+    button:disabled { background: #a0aec0; cursor: not-allowed; }
+
+    .result { margin-top: 1.25rem; display: none; }
+    .result.visible { display: block; }
+
+    .result-box {
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .result-box a {
+      flex: 1;
+      color: #2b6cb0;
+      font-weight: 600;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .result-box a:hover { text-decoration: underline; }
+
+    .copy-btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      background: #4299e1;
+      border-radius: 6px;
+    }
+
+    .error {
+      margin-top: 0.75rem;
+      color: #c53030;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .error.visible { display: block; }
+
+    footer {
+      margin-top: 2rem;
+      color: #a0aec0;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔗 zlink</h1>
+    <p>Simple URL Shortener</p>
+  </header>
+
+  <div class="card">
+    <div class="form-group">
+      <input type="url" id="urlInput" placeholder="https://example.com/very/long/url" />
+      <button id="shortenBtn" onclick="shorten()">Shorten</button>
+    </div>
+    <p class="error" id="errorMsg"></p>
+
+    <div class="result" id="result">
+      <div class="result-box">
+        <a id="shortLink" href="#" target="_blank"></a>
+        <button class="copy-btn" onclick="copyLink()">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>zlink &copy; 2024</footer>
+
+  <script>
+    async function shorten() {
+      const input = document.getElementById('urlInput');
+      const btn = document.getElementById('shortenBtn');
+      const errorMsg = document.getElementById('errorMsg');
+      const result = document.getElementById('result');
+      const shortLink = document.getElementById('shortLink');
+
+      const url = input.value.trim();
+      errorMsg.classList.remove('visible');
+      result.classList.remove('visible');
+
+      if (!url) {
+        showError('Please enter a URL.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Shortening…';
+
+      try {
+        const res = await fetch('/api/shorten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.error || 'Something went wrong.');
+          return;
+        }
+
+        shortLink.href = data.shortUrl;
+        shortLink.textContent = data.shortUrl;
+        result.classList.add('visible');
+      } catch {
+        showError('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Shorten';
+      }
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function copyLink() {
+      const link = document.getElementById('shortLink').href;
+      navigator.clipboard.writeText(link).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      });
+    }
+
+    document.getElementById('urlInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') shorten();
+    });
+  </script>
+</body>
+</html>
